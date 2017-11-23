@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">IdiotPlayer</string>
+    <string name="stop">STOP</string>
+    <string name="songname">케이윌 - Melt"</string>
+    <string name="quit">QUIT</string>
+    <string name="play">PLAY</string>
+    <string name="paused">PAUSED</string>
+</resources>
