@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private IBinder mBinder;
     private boolean hasPermission=true;
     private float rotateF=0f;
+    private ServiceConnection sc;
 
     private static final int REQUEST_EXTERNAL_STORAGE=1;
     private static String[] PERMISSION_STORAGE={
@@ -50,6 +51,9 @@ public class MainActivity extends AppCompatActivity {
         initAndBind();
 
         verifyPermission(this);
+
+        initBar();
+        //playerSetText();
     }
 
     public void initAndBind(){
@@ -58,8 +62,21 @@ public class MainActivity extends AppCompatActivity {
         playtstate.setText("READY");
 
         Intent intent=new Intent(this,MusicService.class);
-        bindService(intent,sc,BIND_AUTO_CREATE);
         startService(intent);
+        sc=new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                //myservice=((MusicService.MusicBinder) iBinder ).getService();
+                mBinder=iBinder;
+                //myservice.setPlayer(mPlayer);
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName componentName) {
+                sc=null;
+            }
+        };
+        bindService(intent,sc,BIND_AUTO_CREATE);
     }
     public void initBar(){
         bar=(SeekBar)findViewById(R.id.seekbar_music);
@@ -106,10 +123,17 @@ public class MainActivity extends AppCompatActivity {
                 switch(msg.what){
                     case 111:
                         //更新UI
-                        if(sc!=null && isPlaying){
-                            updateBar();
-
-                            rotateImg();
+                        try{
+                            Parcel playState=Parcel.obtain();
+                            mBinder.transact(108,Parcel.obtain(),playState,0);
+                            int state=playState.readInt();
+                            if(sc!=null ){//&& state==1
+                                updateBar();
+                               if(state==1) rotateImg();
+                                playerSetText(0);
+                            }
+                        }catch(Exception e){
+                                e.printStackTrace();
                         }
                         break;
                 }
@@ -129,58 +153,12 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         thread.start();
-
-        /*final Thread mThread=new Thread() {
-            @Override
-            public void run() {
-                if(sc!=null && isPlaying){
-                    Parcel reply=Parcel.obtain();
-                    try{
-                        int code=105;//获取当前播放时间
-                        mBinder.transact(code,Parcel.obtain(),reply,0);
-                    }catch(Exception e){
-                        e.printStackTrace();
-                    }
-                    int len=reply.readInt();//=myservice.getCurrentTime()/1000;//get到的是ms,换为s
-                    bar.setProgress(len);
-                    TextView tv=(TextView)findViewById(R.id.time_current);
-                    tv.setText(intToTime(len));
-                   // handler.postDelayed(Thread,1000);//每次延迟1000ms再启动线程
-                }
-            }
-        };*/
     }
-
-    private ServiceConnection sc=new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            //myservice=((MusicService.MusicBinder) iBinder ).getService();
-            mBinder=iBinder;
-            //myservice.setPlayer(mPlayer);
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            sc=null;
-        }
-    };
 
 
     public void changePlayState(View view){
-        if(isFirst) initBar();
-        Button btn=(Button)findViewById(R.id.play_btn);
-        if(isPlaying) {
-            //myservice.pause();
-            playtstate.setText("PAUSED");
-            isPlaying=false;
-            btn.setText("PLAY");
-        }
-        else {
-            //myservice.play();
-            playtstate.setText("PLAYING");
-            isPlaying=true;
-            btn.setText("PAUSE");
-        }
+        initBar();
+        playerSetText(1);
         try{
             int code=101;
             mBinder.transact(code,Parcel.obtain(),Parcel.obtain(),0);
@@ -188,14 +166,41 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+    public void playerSetText(int t){
+        Button btn=(Button)findViewById(R.id.play_btn);
+        Parcel reply=Parcel.obtain();
+        try{
+            int code=108;
+            mBinder.transact(code,Parcel.obtain(),reply,0);
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        if(reply.readInt()==t) {
+            //myservice.pause();
+            playtstate.setText("PAUSED");
+            //isPlaying=false;
+            btn.setText("PLAY");
+        }
+        else {//if(reply.readInt()==t)
+            //myservice.play();
+            playtstate.setText("PLAYING");
+            //isPlaying=true;
+            btn.setText("PAUSE");
+        }
+    }
     public void stopPlay(View view){
         ImageButton iv=(ImageButton)findViewById(R.id.img_cd);
         rotateF=0f;
-        iv.setRotation(rotateF);
+        //iv.setRotation(rotateF);
+
+        RotateAnimation rotate=new RotateAnimation(rotateF,rotateF, Animation.RELATIVE_TO_SELF,0.5f,Animation.RELATIVE_TO_SELF,0.5f);
+        rotate.setDuration(1);
+        rotate.setFillAfter(true);
+        iv.setAnimation(rotate);
 
         Button btn=(Button)findViewById(R.id.play_btn);
         btn.setText("PLAY");
-        isPlaying=false;
+        //isPlaying=false;
         //myservice.stop();
         try{
             int code=102;
@@ -251,16 +256,20 @@ public class MainActivity extends AppCompatActivity {
 
     public void updateBar(){
         Parcel reply=Parcel.obtain();
+        Parcel reply2=Parcel.obtain();
         try{
             int code=105;//获取当前播放时间
             mBinder.transact(code,Parcel.obtain(),reply,0);
+            mBinder.transact(106,Parcel.obtain(),reply2,0);
         }catch(Exception e){
             e.printStackTrace();
         }
-        int len=reply.readInt();//=myservice.getCurrentTime()/1000;//get到的是ms,换为s
-        bar.setProgress(len/1000);
+        int len=reply2.readInt()/1000;
+        bar.setMax(len);
+        int pos=reply.readInt()/1000;//=myservice.getCurrentTime()/1000;//get到的是ms,换为s
+        bar.setProgress(pos);
         TextView tv=(TextView)findViewById(R.id.time_current);
-        tv.setText(intToTime(len/1000));
+        tv.setText(intToTime(pos));
     }
     public void rotateImg(){
         ImageButton iv=(ImageButton)findViewById(R.id.img_cd);

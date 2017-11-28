@@ -48,12 +48,12 @@ public class MusicService extends Service {
             e.printStackTrace();
         }*/
     }
-    @Override
+    /*@Override
     public int onStartCommand(Intent intent,int flags,int startId){
         //mPlayer.start();
         //return super.onStartCommand(intent,flags,startId);
         return Service.START_STICKY;
-    }
+    }*/
     @Override
     public void onDestroy(){
         mPlayer.stop();
@@ -65,11 +65,11 @@ public class MusicService extends Service {
     public IBinder onBind(Intent intent){
         return new MusicBinder();
     }
-    @Override
+    /*@Override
     public boolean onUnbind(Intent intent){
         mPlayer.stop();
         return super.onUnbind(intent);
-    }
+    }*/
 
     public class MusicBinder extends Binder{
         MusicService getService(){
@@ -145,6 +145,13 @@ public class MusicService extends Service {
                         } catch (Exception e){
                             e.printStackTrace();
                         }
+                    }
+                    break;
+                case 108:
+                    //playing or not
+                    if(mPlayer!=null){
+                        if(mPlayer.isPlaying()) reply.writeInt(1);
+                        else reply.writeInt(0);
                     }
                     break;
             }
