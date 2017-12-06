@@ -24,6 +24,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
     private boolean isPlaying=false;
@@ -41,6 +42,11 @@ public class MainActivity extends AppCompatActivity {
     private static String[] PERMISSION_STORAGE={
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
+    private String PLAYING="PLAYING";
+    private String PAUSED="PAUSED";
+    private String READY="READY";
+    private String PAUSE="PAUSE";
+    private String PLAY="PLAY";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,11 +72,8 @@ public class MainActivity extends AppCompatActivity {
         sc=new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                //myservice=((MusicService.MusicBinder) iBinder ).getService();
                 mBinder=iBinder;
-                //myservice.setPlayer(mPlayer);
             }
-
             @Override
             public void onServiceDisconnected(ComponentName componentName) {
                 sc=null;
@@ -129,8 +132,8 @@ public class MainActivity extends AppCompatActivity {
                             int state=playState.readInt();
                             if(sc!=null ){//&& state==1
                                 updateBar();
+                                playerSetText();
                                if(state==1) rotateImg();
-                                playerSetText(0);
                             }
                         }catch(Exception e){
                                 e.printStackTrace();
@@ -157,8 +160,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void changePlayState(View view){
-        initBar();
-        playerSetText(1);
         try{
             int code=101;
             mBinder.transact(code,Parcel.obtain(),Parcel.obtain(),0);
@@ -166,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-    public void playerSetText(int t){
+    public void playerSetText(){
         Button btn=(Button)findViewById(R.id.play_btn);
         Parcel reply=Parcel.obtain();
         try{
@@ -175,17 +176,17 @@ public class MainActivity extends AppCompatActivity {
         }catch(Exception e){
             e.printStackTrace();
         }
-        if(reply.readInt()==t) {
-            //myservice.pause();
-            playtstate.setText("PAUSED");
-            //isPlaying=false;
-            btn.setText("PLAY");
+        if(reply.readInt()==1){
+            playtstate.setText(PLAYING);
+            btn.setText(PAUSE);
         }
-        else {//if(reply.readInt()==t)
-            //myservice.play();
-            playtstate.setText("PLAYING");
-            //isPlaying=true;
-            btn.setText("PAUSE");
+        else if(reply.readInt()==0){
+            playtstate.setText(PAUSED);
+            btn.setText(PLAY);
+        }
+        else if(reply.readInt()==-1){
+            playtstate.setText(READY);
+            btn.setText(PLAY);
         }
     }
     public void stopPlay(View view){
@@ -211,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         //isFirst=true;
-        playtstate.setText("READY");
+        playtstate.setText("R");
         TextView currentTime=(TextView)findViewById(R.id.time_current);
         currentTime.setText("00:00");
         bar.setProgress(0);
@@ -232,10 +233,10 @@ public class MainActivity extends AppCompatActivity {
     public void randomNext(View view){
         try{
             int code=107;//next
-            Parcel reply=Parcel.obtain();
-            mBinder.transact(code,Parcel.obtain(),reply,0);
-            TextView tv=(TextView)findViewById(R.id.song_name_singer);
-            tv.setText(reply.readString());
+            //Parcel reply=Parcel.obtain();
+            mBinder.transact(code,Parcel.obtain(),Parcel.obtain(),0);
+            //TextView tv=(TextView)findViewById(R.id.song_name_singer);
+            //tv.setText(reply.readString());
         }catch(Exception e){
             e.printStackTrace();
         }
@@ -258,9 +259,8 @@ public class MainActivity extends AppCompatActivity {
         Parcel reply=Parcel.obtain();
         Parcel reply2=Parcel.obtain();
         try{
-            int code=105;//获取当前播放时间
-            mBinder.transact(code,Parcel.obtain(),reply,0);
-            mBinder.transact(106,Parcel.obtain(),reply2,0);
+            mBinder.transact(105,Parcel.obtain(),reply,0);//获取当前播放时间
+            mBinder.transact(106,Parcel.obtain(),reply2,0);//获取总时长
         }catch(Exception e){
             e.printStackTrace();
         }
@@ -270,14 +270,16 @@ public class MainActivity extends AppCompatActivity {
         bar.setProgress(pos);
         TextView tv=(TextView)findViewById(R.id.time_current);
         tv.setText(intToTime(pos));
+        TextView tv2=(TextView)findViewById(R.id.time_all);
+        tv2.setText(intToTime(len));
     }
     public void rotateImg(){
         ImageButton iv=(ImageButton)findViewById(R.id.img_cd);
         rotateF+=1f;
-        if(rotateF==360f) rotateF=0f;
+        if(rotateF>=360f) rotateF=0f;
         //iv.setRotation(rotateF);
         RotateAnimation rotate=new RotateAnimation(rotateF,rotateF+1f, Animation.RELATIVE_TO_SELF,0.5f,Animation.RELATIVE_TO_SELF,0.5f);
-        rotate.setDuration(298);
+        rotate.setDuration(320);
         rotate.setFillAfter(true);
         iv.setAnimation(rotate);
     }
